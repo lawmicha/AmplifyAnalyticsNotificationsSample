@@ -1,3 +1,5 @@
+# This sample is a proof of concept, WIP, and does not reflect best practice or how to use Amplify libraries
+
 # Amplify Analytics Notifications Sample
 
 This sample uses 
