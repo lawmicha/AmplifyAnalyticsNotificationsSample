@@ -9,17 +9,14 @@ This sample uses
 
 ## Install dependencies
 
-If you are trying to install the latest changes from your local pod, make sure to run `pod cache clean --all` to clear the pods for a fresh install, otherwise, run
+Currently uses local pods pointing to 
+https://github.com/aws-amplify/amplify-ios/tree/lawmicha/pinpoint-notifications
 
-```bash
-pod install
-```
-or in new project, `pod init` and add
-```
-pod 'Amplify'
-pod 'AmplifyPlugins/AWSPinpointAnalyticsPlugin'
-pod 'AmplifyPlugins/AWSCognitoAuthPlugin'
-```
+1. Get a copy of Amplify on your machine: `git clone https://github.com/aws-amplify/amplify-ios.git`
+2. checkout branch `lawmicha/pinpoint-notifications`
+3. Update the LOCALPATH to point to the local Amplify repo
+4. `pod install`
+
 ## Generate resources (amplifyconfiguration.json)
 
 1. Run `amplify init` and choose `ios` for the type of app you're building
