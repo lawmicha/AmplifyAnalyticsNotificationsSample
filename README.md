@@ -64,7 +64,7 @@ func application(_ application: UIApplication,
     print("Device Token: \(token)")
 
     // Register the device token with Pinpoint as the endpoint for this user
-    pinpoint!.notificationManager.interceptDidRegisterForRemoteNotifications(withDeviceToken: deviceToken)
+    //pinpoint!.notificationManager.interceptDidRegisterForRemoteNotifications(withDeviceToken: deviceToken)
 }
 
 func application(_ application: UIApplication,

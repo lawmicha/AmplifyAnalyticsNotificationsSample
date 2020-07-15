@@ -10,6 +10,7 @@ import UIKit
 import Amplify
 import AmplifyPlugins
 import AWSPinpoint
+import UserNotifications
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -35,6 +36,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             let plugin = try Amplify.Analytics.getPlugin(for: "awsPinpointAnalyticsPlugin") as! AWSPinpointAnalyticsPlugin
             pinpoint = plugin.getEscapeHatch()
             print("Sucessfully got AWSPinpoint instance from escape hatch")
+            pinpoint?.analyticsClient
         } catch {
             print("Get escape hatch failed with error - \(error)")
         }
@@ -57,7 +59,34 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // If any sessions were discarded while the application was not running, this will be called shortly after application:didFinishLaunchingWithOptions.
         // Use this method to release any resources that were specific to the discarded scenes, as they will not return.
     }
-    // MARK: Remote Notifications Lifecycle
+
+    // MARK: 1. Register Notification methods
+
+    func registerForPushNotifications() {
+        UNUserNotificationCenter.current().delegate = self
+        UNUserNotificationCenter.current()
+            .requestAuthorization(options:[.alert, .sound, .badge]) {[weak self] granted, error in
+                print("Permission granted: \(granted)")
+                guard granted else { return }
+
+                // Only get the notification settings if user has granted permissions
+                self?.getNotificationSettings()
+        }
+    }
+    func getNotificationSettings() {
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            print("Notification settings: \(settings)")
+            guard settings.authorizationStatus == .authorized else { return }
+
+            DispatchQueue.main.async {
+                // Register with Apple Push Notification service
+                UIApplication.shared.registerForRemoteNotifications()
+            }
+        }
+    }
+
+    // MARK: 2. Remote Notifications Lifecycle
+
     func application(_ application: UIApplication,
         didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         let tokenParts = deviceToken.map { data in String(format: "%02.2hhx", data) }
@@ -72,11 +101,15 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         didFailToRegisterForRemoteNotificationsWithError error: Error) {
         print("Failed to register: \(error)")
     }
+}
+
+extension AppDelegate: UNUserNotificationCenterDelegate {
+    // Handle notification
 
     func application(_ application: UIApplication,
                      didReceiveRemoteNotification userInfo: [AnyHashable: Any],
                      fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
-
+        print(userInfo)
         if (application.applicationState == .active) {
             let alert = UIAlertController(title: "Notification Received",
                                           message: userInfo.description,
@@ -88,33 +121,30 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         }
 
         pinpoint!.notificationManager.interceptDidReceiveRemoteNotification(userInfo, fetchCompletionHandler: completionHandler)
+        completionHandler(.newData)
     }
 
-    // MARK: Push Notification methods
+    // Foreground push notifications handler
+    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: (UNNotificationPresentationOptions) -> Void) {
+        print("userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: (UNNotificationPresentationOptions)")
+        if notification.request.content.userInfo is [String : AnyObject] {
+            // Getting user info
+            print(notification.request.content.userInfo)
 
-    func registerForPushNotifications() {
-        UNUserNotificationCenter.current()
-            .requestAuthorization(options:[.alert, .sound, .badge]) {[weak self] granted, error in
-                print("Permission granted: \(granted)")
-                guard granted else { return }
+        }
+        pinpoint!.notificationManager.interceptDidReceiveRemoteNotification(notification.request.content.userInfo, fetchCompletionHandler: { _ in })
+        completionHandler(.badge)
+     }
 
-                // Only get the notification settings if user has granted permissions
-                self?.getNotificationSettings()
+    // Background and closed  push notifications handler
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: () -> Void)  {
+        print("userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: () -> Void)")
+        if response.notification.request.content.userInfo is [String : AnyObject] {
+            // Getting user info
+            print(response.notification.request.content.userInfo)
         }
 
+        pinpoint!.notificationManager.interceptDidReceiveRemoteNotification(response.notification.request.content.userInfo, fetchCompletionHandler: { _ in })
+        completionHandler()
     }
-
-    func getNotificationSettings() {
-        UNUserNotificationCenter.current().getNotificationSettings { settings in
-            print("Notification settings: \(settings)")
-            guard settings.authorizationStatus == .authorized else { return }
-
-            DispatchQueue.main.async {
-                // Register with Apple Push Notification service
-                UIApplication.shared.registerForRemoteNotifications()
-            }
-        }
-    }
-
 }
-
